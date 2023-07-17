@@ -1,0 +1,75 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#define PORT 8080
+#define MIN_RANGE 50000
+#define MAX_RANGE 80000
+
+int main() {
+    int sockfd, newsockfd;
+    struct sockaddr_in serv_addr, cli_addr;
+    socklen_t clilen;
+
+    // Create socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Failed to create socket");
+        return 1;
+    }
+
+    // Bind socket to address and port
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(PORT);
+    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("Failed to bind socket");
+        return 1;
+    }
+
+    // Listen for connections
+    if (listen(sockfd, 1) < 0) {
+        perror("Failed to listen");
+        return 1;
+    }
+
+    printf("Server is listening on port %d...\n", PORT);
+
+    while (1) {
+        // Accept client connection
+        clilen = sizeof(cli_addr);
+        newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
+        if (newsockfd < 0) {
+            perror("Failed to accept connection");
+            return 1;
+        }
+
+        printf("Client connected\n");
+
+        // Generate a random number
+        srand(time(NULL));
+        int random_number = (rand() % (MAX_RANGE - MIN_RANGE + 1)) + MIN_RANGE;
+
+        // Send the random number to the client
+        if (send(newsockfd, &random_number, sizeof(random_number), 0) < 0) {
+            perror("Failed to send random number");
+            return 1;
+        }
+
+        printf("Random number %d sent to the client\n", random_number);
+
+        // Close the client socket
+        close(newsockfd);
+        printf("Client disconnected\n");
+    }
+
+    // Close the server socket
+    close(sockfd);
+
+    return 0;
+}
